@@ -33,7 +33,7 @@ FLAGS = flags.FLAGS
 
 batch_size = 128
 num_classes = 10
-epochs = 12
+epochs = 1
 
 flags.DEFINE_string('output_dir', '/tmp/mnist_train/',
                     'Output directory to hold tensorboard events')
