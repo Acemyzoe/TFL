@@ -25,46 +25,40 @@ from tensorflow_model_optimization.python.core.sparsity.keras import prune
 from tensorflow_model_optimization.python.core.sparsity.keras import pruning_callbacks
 from tensorflow_model_optimization.python.core.sparsity.keras import pruning_schedule
 
-ConstantSparsity = pruning_schedule.ConstantSparsity
-keras = tf.keras
-l = keras.layers
-
-FLAGS = flags.FLAGS
-
 batch_size = 128
 num_classes = 10
 epochs = 1
 
-flags.DEFINE_string('output_dir', '/tmp/mnist_train/',
+flags.DEFINE_string('output_dir', './tmp/mnist_train/',
                     'Output directory to hold tensorboard events')
 
 
 def build_sequential_model(input_shape):
   return tf.keras.Sequential([
-      l.Conv2D(
+      tf.keras.layers.Conv2D(
           32, 5, padding='same', activation='relu', input_shape=input_shape),
-      l.MaxPooling2D((2, 2), (2, 2), padding='same'),
-      l.BatchNormalization(),
-      l.Conv2D(64, 5, padding='same', activation='relu'),
-      l.MaxPooling2D((2, 2), (2, 2), padding='same'),
-      l.Flatten(),
-      l.Dense(1024, activation='relu'),
-      l.Dropout(0.4),
-      l.Dense(num_classes, activation='softmax')
+      tf.keras.layers.MaxPooling2D((2, 2), (2, 2), padding='same'),
+      tf.keras.layers.BatchNormalization(),
+      tf.keras.layers.Conv2D(64, 5, padding='same', activation='relu'),
+      tf.keras.layers.MaxPooling2D((2, 2), (2, 2), padding='same'),
+      tf.keras.layers.Flatten(),
+      tf.keras.layers.Dense(1024, activation='relu'),
+      tf.keras.layers.Dropout(0.4),
+      tf.keras.layers.Dense(num_classes, activation='softmax')
   ])
 
 
 def build_functional_model(input_shape):
   inp = tf.keras.Input(shape=input_shape)
-  x = l.Conv2D(32, 5, padding='same', activation='relu')(inp)
-  x = l.MaxPooling2D((2, 2), (2, 2), padding='same')(x)
-  x = l.BatchNormalization()(x)
-  x = l.Conv2D(64, 5, padding='same', activation='relu')(x)
-  x = l.MaxPooling2D((2, 2), (2, 2), padding='same')(x)
-  x = l.Flatten()(x)
-  x = l.Dense(1024, activation='relu')(x)
-  x = l.Dropout(0.4)(x)
-  out = l.Dense(num_classes, activation='softmax')(x)
+  x = tf.keras.layers.Conv2D(32, 5, padding='same', activation='relu')(inp)
+  x = tf.keras.layers.MaxPooling2D((2, 2), (2, 2), padding='same')(x)
+  x = tf.keras.layers.BatchNormalization()(x)
+  x = tf.keras.layers.Conv2D(64, 5, padding='same', activation='relu')(x)
+  x = tf.keras.layers.MaxPooling2D((2, 2), (2, 2), padding='same')(x)
+  x = tf.keras.layers.Flatten()(x)
+  x = tf.keras.layers.Dense(1024, activation='relu')(x)
+  x = tf.keras.layers.Dropout(0.4)(x)
+  out = tf.keras.layers.Dense(num_classes, activation='softmax')(x)
 
   return tf.keras.models.Model([inp], [out])
 
@@ -72,20 +66,20 @@ def build_functional_model(input_shape):
 def build_layerwise_model(input_shape, **pruning_params):
   return tf.keras.Sequential([
       prune.prune_low_magnitude(
-          l.Conv2D(32, 5, padding='same', activation='relu'),
+          tf.keras.layers.Conv2D(32, 5, padding='same', activation='relu'),
           input_shape=input_shape,
           **pruning_params),
-      l.MaxPooling2D((2, 2), (2, 2), padding='same'),
-      l.BatchNormalization(),
+      tf.keras.layers.MaxPooling2D((2, 2), (2, 2), padding='same'),
+      tf.keras.layers.BatchNormalization(),
       prune.prune_low_magnitude(
-          l.Conv2D(64, 5, padding='same', activation='relu'), **pruning_params),
-      l.MaxPooling2D((2, 2), (2, 2), padding='same'),
-      l.Flatten(),
+          tf.keras.layers.Conv2D(64, 5, padding='same', activation='relu'), **pruning_params),
+      tf.keras.layers.MaxPooling2D((2, 2), (2, 2), padding='same'),
+      tf.keras.layers.Flatten(),
       prune.prune_low_magnitude(
-          l.Dense(1024, activation='relu'), **pruning_params),
-      l.Dropout(0.4),
+          tf.keras.layers.Dense(1024, activation='relu'), **pruning_params),
+      tf.keras.layers.Dropout(0.4),
       prune.prune_low_magnitude(
-          l.Dense(num_classes, activation='softmax'), **pruning_params)
+          tf.keras.layers.Dense(num_classes, activation='softmax'), **pruning_params)
   ])
 
 
@@ -103,7 +97,7 @@ def train_and_save(models, x_train, y_train, x_test, y_test):
     # step. Also add a callback to add pruning summaries to tensorboard
     callbacks = [
         pruning_callbacks.UpdatePruningStep(),
-        pruning_callbacks.PruningSummaries(log_dir=FLAGS.output_dir)
+        pruning_callbacks.PruningSummaries(log_dir=flags.FLAGS.output_dir)
     ]
 
     model.fit(
@@ -159,13 +153,15 @@ def main(unused_argv):
   y_test = tf.keras.utils.to_categorical(y_test, num_classes)
 
   pruning_params = {
-      'pruning_schedule': ConstantSparsity(0.75, begin_step=2000, frequency=100)
+      'pruning_schedule': pruning_schedule.ConstantSparsity(0.75, begin_step=2000, frequency=100)
   }
 
   layerwise_model = build_layerwise_model(input_shape, **pruning_params)
+
   sequential_model = build_sequential_model(input_shape)
   sequential_model = prune.prune_low_magnitude(
       sequential_model, **pruning_params)
+      
   functional_model = build_functional_model(input_shape)
   functional_model = prune.prune_low_magnitude(
       functional_model, **pruning_params)
