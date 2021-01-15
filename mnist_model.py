@@ -35,6 +35,15 @@ def mnist_model():
    tf.saved_model.save(model,'./model/tf_model')
    tf.keras.utils.plot_model(model,'model_info.png',show_shapes = True)
 
+def test(model_path='./model/tf_model'):
+   'keras model 推理'
+   x_train,y_train,x_test,y_test = load_mnist_data()
+   model = tf.keras.models.load_model(model_path)
+
+   t=time.time()
+   output = model(x_test)
+   print(output[0],'\n',time.time()-t)
+
 def trt(trt_opt):
    '''
    使用tensorRT优化模型
@@ -53,7 +62,8 @@ def trt(trt_opt):
    else:
       converter.save('trt_model')
 
-def trt_test(model_path):
+def trt_test(model_path='./trt_model_opt'):
+   'trt model 推理'
    x_train,y_train,x_test,y_test = load_mnist_data()
    model_loaded = tf.saved_model.load(model_path)#读取模型
 
@@ -63,24 +73,20 @@ def trt_test(model_path):
    output = model_loaded(x_test)
    print(output[0],'\n',time.time()-t)
 
-def test(model_path):
-   x_train,y_train,x_test,y_test = load_mnist_data()
-
-   model = tf.keras.models.load_model(model_path)
-
-   t=time.time()
-   output = model(x_test)
-   print(output[0],'\n',time.time()-t)
-
 def tflite():
-   'SavedModel to TensorFlow Lite'
+   'keras model -> tflite'
    converter = tf.lite.TFLiteConverter.from_saved_model("./model/tf_model")
-   converter.optimizations = [tf.lite.Optimize.DEFAULT] # 量化
+   # 量化权重：16位浮点数用于GPU加速，而8位整数则用于CPU执行。
+   converter.optimizations = [tf.lite.Optimize.DEFAULT] # 训练后量化
+   #converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_SIZE] # 指定8位整数权重量化
    tflite_quantized_model = converter.convert()
 
+   # SavedModel to TensorFlow Lite
    open("./model/quantized_converted_model.tflite", "wb").write(tflite_quantized_model)
 
-def tflite_run(model_path):
+
+def tflite_run(model_path="./model/quantized_converted_model.tflite"):
+   'tflite 推理'
    # Load the TFLite model and allocate tensors.
    interpreter = tf.lite.Interpreter(model_path)
    interpreter.allocate_tensors()
@@ -103,6 +109,7 @@ if __name__ == '__main__':
    print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
    # mnist_model()
    # trt(True)
+   # trt_test()
    # tflite()
    # test('./model/tf_model')
-   tflite_run("./model/quantized_converted_model.tflite")
+   # tflite_run("./model/quantized_converted_model.tflite")
