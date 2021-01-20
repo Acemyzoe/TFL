@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import tensorflow as tf
 import time
 import numpy as np
+import tensorflow_model_optimization as tfmot
 
 def load_mnist_data():
    mnist = tf.keras.datasets.mnist
@@ -27,7 +28,7 @@ def mnist_model():
 
    model.summary()
    model.compile(optimizer='adam',loss='sparse_categorical_crossentropy',metrics=['accuracy'])
-   model.fit(x_train, y_train, batch_size=64,epochs=10)
+   model.fit(x_train, y_train, batch_size=64,epochs=1)
    score = model.evaluate(x_test,  y_test, verbose=2)
    print('loss:',score[0])
    print('accuracy:',score[1])
@@ -74,7 +75,7 @@ def trt_test(model_path='./trt_model_opt'):
    print(output[0],'\n',time.time()-t)
 
 def tflite():
-   'keras model -> tflite'
+   'keras model -> tflite 训练后量化' 
    converter = tf.lite.TFLiteConverter.from_saved_model("./model/tf_model")
    # 量化权重：16位浮点数用于GPU加速，而8位整数则用于CPU执行。
    converter.optimizations = [tf.lite.Optimize.DEFAULT] # 训练后量化
@@ -83,7 +84,6 @@ def tflite():
 
    # SavedModel to TensorFlow Lite
    open("./model/quantized_converted_model.tflite", "wb").write(tflite_quantized_model)
-
 
 def tflite_run(model_path="./model/quantized_converted_model.tflite"):
    'tflite 推理'
@@ -104,6 +104,7 @@ def tflite_run(model_path="./model/quantized_converted_model.tflite"):
    # Use `tensor()` in order to get a pointer to the tensor.
    output_data = interpreter.get_tensor(output_details[0]['index'])
    print(output_data)
+
 
 if __name__ == '__main__':
    print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
